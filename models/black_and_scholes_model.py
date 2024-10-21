@@ -15,6 +15,7 @@ class BlackScholesModel:
         self.r_risk_free_interest_rate = option_info.r_risk_free_interest_rate
         self.v_volatility = option_info.v_volatility
 
+
     def calculate_d1(self) -> float:
         """
         Calculates the d1 value using the following formula

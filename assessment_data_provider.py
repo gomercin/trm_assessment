@@ -33,8 +33,8 @@ class AssessmentDataProvider(BaseDataProvider):
 
 
     def get_option_information(self) -> OptionInformation:
-        def get_value_for_parameter(df, param_name):
-            return df.loc[df['European Vanilla Call'] == param_name, 'base case'].values[0]
+        def get_value_for_parameter(df, param_name, index = 0):
+            return float(df.loc[df['European Vanilla Call'] == param_name, 'base case'].values[index])
         
         option_df = pd.read_excel(self.data_source, header=2, sheet_name="Option")
         s0 = get_value_for_parameter(option_df, "S0")
@@ -43,4 +43,9 @@ class AssessmentDataProvider(BaseDataProvider):
         r = get_value_for_parameter(option_df, "r")
         v = get_value_for_parameter(option_df, "Vol")
 
-        return OptionInformation(s0, k, t, r, v)
+        call_price = get_value_for_parameter(option_df, "Call", 1)  # Using the second result for Spot call price
+        put_price = get_value_for_parameter(option_df, "Put", 0)  # Using the result for Put option with forward price
+                                                       # as Spot/Put price was not provided.
+                                                       # Checked manually to see if the values are close enough for our purpose.
+
+        return OptionInformation(s0, k, t, r, v, call_price, put_price)

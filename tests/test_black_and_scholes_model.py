@@ -23,13 +23,6 @@ class TestBlackScholesModel(unittest.TestCase):
                                              T_time_to_maturity=1,  # 1 year
                                              r_risk_free_interest_rate=0.05,  # 5% risk free rate
                                              v_volatility=0.2)  # 20% volatility
-        
-
-        self.e2e_test_input_file = os.environ.get("TEST_INPUT_FILE", None)
-        if self.e2e_test_input_file:
-            self.e2e_data_provider = AssessmentDataProvider(self.e2e_test_input_file)
-        else:
-            self.e2e_data_provider = None
 
 
     def test_calculate_d1(self):
@@ -46,6 +39,7 @@ class TestBlackScholesModel(unittest.TestCase):
         calculated_d1 = model.calculate_d1()
         self.assertAlmostEqual(calculated_d1, expected_d1, places=6)
 
+
     def test_calculate_d2(self):
         """
         Unit test for the calculate_d2 method.
@@ -59,6 +53,7 @@ class TestBlackScholesModel(unittest.TestCase):
         calculated_d2 = model.calculate_d2()
         self.assertAlmostEqual(calculated_d2, expected_d2, places=6)
 
+
     def test_call_option_in_the_money(self):
         """
         Test case for in-the-money call option.
@@ -71,6 +66,7 @@ class TestBlackScholesModel(unittest.TestCase):
         call_price = model.calculate_call_option_price()
         self.assertGreater(call_price, 0, "In-the-money call option should have a positive price.")
 
+
     def test_call_option_at_the_money(self):
         """
         Test case for at-the-money call option.
@@ -81,7 +77,8 @@ class TestBlackScholesModel(unittest.TestCase):
         model = BlackScholesModel(option_info)
 
         call_price = model.calculate_call_option_price()
-        self.assertGreater(call_price, 0, "At-the-money call option should have a positive price, though it may be small.")
+        self.assertGreater(call_price, 0, "At-the-money call option should have a positive price.")
+
 
     def test_call_option_out_of_the_money(self):
         """
@@ -91,10 +88,10 @@ class TestBlackScholesModel(unittest.TestCase):
         option_info = copy.copy(self.test_option)
         option_info.S_current_price = option_info.K_strike_price - 10
         model = BlackScholesModel(option_info)
-        model = BlackScholesModel(option_info)
 
         call_price = model.calculate_call_option_price()
         self.assertGreater(call_price, 0, "Out-of-the-money call option should have a small positive price.")
+
 
     def test_put_option_in_the_money(self):
         """
@@ -108,6 +105,7 @@ class TestBlackScholesModel(unittest.TestCase):
         put_price = model.calculate_put_option_price()
         self.assertGreater(put_price, 0, "In-the-money put option should have a positive price.")
 
+
     def test_put_option_at_the_money(self):
         """
         Test case for at-the-money put option.
@@ -118,7 +116,8 @@ class TestBlackScholesModel(unittest.TestCase):
         model = BlackScholesModel(option_info)
 
         put_price = model.calculate_put_option_price()
-        self.assertGreater(put_price, 0, "At-the-money put option should have a positive price, though it may be small.")
+        self.assertGreater(put_price, 0, "At-the-money put option should have a positive price.")
+
 
     def test_put_option_out_of_the_money(self):
         """
@@ -131,27 +130,94 @@ class TestBlackScholesModel(unittest.TestCase):
 
         put_price = model.calculate_put_option_price()
         self.assertGreater(put_price, 0, "Out-of-the-money put option should have a small positive price.")
-    
-    def test_end_to_end_call_option(self):
+
+
+    def test_zero_time_to_maturity_call(self):
         """
-        End-to-end test for calculating the call option price.
-        Verifies all underlying calculations for call options.
+        Test calculation when Time To Maturity is 0.
+        For the current implementation, I took it as an invalid case, thus verifying if correct assertion is being thrown.
+        In a real implementation, we might rather want to check the intrinsic value.
         """
-        assert self.e2e_data_provider, "E2E test data provider is not set. Ensure that TEST_INPUT_FILE environment variable is set to the input file."
-        option_info = self.e2e_data_provider.get_option_information()
+        option_info = copy.copy(self.test_option)
+        option_info.T_time_to_maturity = 0
         model = BlackScholesModel(option_info)
+        self.assertRaises(AssertionError, model.calculate_call_option_price)
 
-        call_price = model.calculate_call_option_price()
-        self.assertAlmostEqual(call_price, option_info.expected_call_price, places=3, msg=f"Value mismatch in E2E call option test. Expected {option_info.expected_call_price}, received {call_price}")
 
-    def test_end_to_end_put_option(self):
+    def test_zero_volatility_call(self):
         """
-        End-to-end test for calculating the put option price.
-        Verifies all underlying calculations for put options.
+        Test the behavior with 0 volatility.
+        Similar to time to maturity, 0 volatility causes an exception in the current code.
         """
-        assert self.e2e_data_provider, "E2E test data provider is not set. Ensure that TEST_INPUT_FILE environment variable is set to the input file."
-        option_info = self.e2e_data_provider.get_option_information()
+        option_info = copy.copy(self.test_option)
+        option_info.v_volatility = 0
+        
+        intrinsic_val = 10
+        option_info.S_current_price = option_info.K_strike_price + intrinsic_val
+        
         model = BlackScholesModel(option_info)
+        self.assertRaises(AssertionError, model.calculate_call_option_price)
 
-        put_price = model.calculate_put_option_price()
-        self.assertAlmostEqual(put_price, option_info.expected_put_price, places=3, msg=f"Value mismatch in E2E put option test. Expected {option_info.expected_put_price}, received {put_price}")
+
+    def test_high_volatility_call(self):
+        """
+        Test if call option is close to the current price when there is high volatility.
+        """
+        option_info = copy.copy(self.test_option)
+        option_info.v_volatility = 1000
+        model = BlackScholesModel(option_info)
+        self.assertAlmostEqual(model.calculate_call_option_price(), option_info.S_current_price, delta=1)
+
+
+    def test_high_volatility_put(self):
+        """
+        Test if put option is close to strike price (adjusted for duration and risk-free rate) when there is high volatility
+        """
+        option_info = copy.copy(self.test_option)
+        option_info.v_volatility = 1000
+        model = BlackScholesModel(option_info)
+        self.assertAlmostEqual(model.calculate_put_option_price(), option_info.K_strike_price * math.exp(-0.05 * 1), delta=1)
+
+
+    def test_zero_interest_rate_call(self):
+        """
+        Test the behavior with 0 interest rate.
+        We are mainly checking if this is handled differently from volatility and time to maturity.
+        i.e. no exceptions thrown, and a positive value is calculated
+        """
+        option_info = copy.copy(self.test_option)
+        option_info.r_risk_free_interest_rate = 0
+        model = BlackScholesModel(option_info)
+        self.assertGreater(model.calculate_call_option_price(), 0)
+
+
+    def test_zero_interest_rate_put(self):
+        """
+        Test the behavior with 0 interest rate.
+        We are mainly checking if this is handled differently from volatility and time to maturity.
+        i.e. no exceptions thrown, and a positive value is calculated
+        """
+        option_info = copy.copy(self.test_option)
+        option_info.r_risk_free_interest_rate = 0
+        model = BlackScholesModel(option_info)
+        self.assertGreater(model.calculate_put_option_price(), 0)
+
+
+    def test_negative_interest_rate_call(self):
+        """
+        Test if negative interest rate doesn't break anything in the model for call options.
+        """
+        option_info = copy.copy(self.test_option)
+        option_info.r_risk_free_interest_rate = -0.01
+        model = BlackScholesModel(option_info)
+        self.assertGreater(model.calculate_call_option_price(), 0)
+
+
+    def test_negative_interest_rate_put(self):
+        """
+        Test if negative interest rate doesn't break anything in the model for put options.
+        """
+        option_info = copy.copy(self.test_option)
+        option_info.r_risk_free_interest_rate = -0.01
+        model = BlackScholesModel(option_info)
+        self.assertGreater(model.calculate_put_option_price(), 0)

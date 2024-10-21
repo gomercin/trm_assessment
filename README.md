@@ -11,10 +11,12 @@ Also, in general using utility libraries such as logging, or argparse would be p
 they wouldn't bring much value for the current context, so they are deliberately excluded.
 
 # Usage
-To run the code and display the results
-```python main.py <path to input excel file>```
+## To run the code and display the results
+```
+python main.py <path to input excel file>
+```
 
-To run the tests:
+## To run the tests:
 The E2E tests uses the input excel file as reference for calculated values. Thus, the path to the file
 should be provided as an environment variable before running the tests.
 ```
